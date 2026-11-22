@@ -30,7 +30,7 @@ Homebridge 2 platform plugin for Jandy iAquaLink pool and spa controllers. It di
 ## Requirements
 
 - Homebridge 2.0 or later
-- Node.js 22.12 or 24
+- Node.js 22.12, 24, or 26
 - A supported Jandy iAquaLink controller
 - An iAquaLink account with access to the controller
 
