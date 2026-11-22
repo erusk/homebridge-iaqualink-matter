@@ -9,6 +9,8 @@ export interface IAquaLinkConfig extends PlatformConfig {
   exposeLightShows?: boolean;
   poolLightProgram?: string;
   spaLightProgram?: string;
+  excludedDevices?: string[];
+  excludedDeviceNames?: string[];
   useMockApi?: boolean;
 }
 

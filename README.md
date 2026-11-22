@@ -72,8 +72,24 @@ The recommended configuration method is the Homebridge UI. A minimal manual conf
 | `exposeLightShows` | `true` | Expose each discovered Jandy light color and show as a momentary HomeKit switch. Disable for a simpler HomeKit layout. |
 | `poolLightProgram` | `Caribbean Blue` | Program selected when the Matter pool light is turned on.  Matter does not currently support multiple switches under one device, so you must sellect a default light color if you are using Matter to turn the light on and off. |
 | `spaLightProgram` | `Caribbean Blue` | Program selected when the Matter spa light is turned on. Matter does not currently support multiple switches under one device, so you must sellect a default light color if you are using Matter to turn the light on and off. |
+| `excludedDevices` | `[]` | Equipment IDs not to publish to HomeKit or Matter, chosen under **Hide Devices** in Homebridge UI. See [Hiding devices](#hiding-devices). |
+| `excludedDeviceNames` | `[]` | Other device names or IDs to hide, such as an aux circuit's iAquaLink label. |
 | `diagnosticMode` | `false` | Log sanitized equipment snapshots for troubleshooting. |
 | `useMockApi` | `false` | Use synthetic equipment during development; never enable for normal operation. |
+
+## Hiding devices
+
+iAquaLink can report equipment you don't have or don't use, such as a heater on a system without one. To keep it out of HomeKit and Matter, open **Hide Devices** in the plugin settings and check it, then restart. A hidden device is removed if it was published before, and anything that referenced it (scenes, automations, Matter pairings of that device) loses it.
+
+For devices not in the checklist, such as auxiliary circuits with custom labels, add the name as iAquaLink shows it (for example `Jet Pump`) under **Other Devices to Hide**. Matching ignores case. At startup the log lists each discovered device with its ID, marking hidden ones `[excluded]`:
+
+```
+Discovered devices: Air Temperature (air-temperature), Pool Heater (pool-heater) [excluded], ...
+```
+
+On systems with a heat pump but no chiller, the heat pump is reported as **Pool Heater** with the ID `heat-pump`. Check **Heat Pump / Chiller** or add `Pool Heater` by name to hide it.
+
+Hiding a temperature sensor does not affect the thermostats that read it.
 
 ## Cloud control
 

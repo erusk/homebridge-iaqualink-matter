@@ -43,32 +43,8 @@ export class MatterPublisher {
     for (const item of equipment) this.states.set(item.id, item);
 
     const accessories: MatterAccessory[] = equipment.flatMap((item) => {
-      const deviceType = this.deviceType(item);
-      if (!deviceType) return [];
-      // Always submit the fully-composed device type (with its Heating/Cooling
-      // feature requirements). Homebridge's own Matter cache only persists a
-      // bare {name, code} device-type stub - it cannot restore the composed
-      // shape - and its AccessoryManager already compares composed features to
-      // decide whether to reuse or rebuild the endpoint. Feeding it that stub
-      // here (instead of letting it compare against the real thing) silently
-      // drops the composed features on every restart, breaking thermostat
-      // commands, without preventing the endpoint rebuild it was meant to
-      // avoid. deviceType() below deliberately composes only the feature this
-      // plugin actually implements (no Occupancy: occupiedHeating/CoolingSetpoint
-      // are part of the base Heating/Cooling feature attributes, not gated
-      // behind Occupancy) so the restored-from-cache shape and the freshly
-      // composed shape always match and the endpoint is reused across restarts.
-      return [associateMatterAccessory({
-        UUID: this.matterUuid(item.id),
-        displayName: item.name,
-        deviceType,
-        manufacturer: 'Jandy',
-        model: item.kind,
-        serialNumber: item.id,
-        context: { equipmentId: item.id },
-        clusters: this.clusters(item),
-        handlers: this.handlers(item),
-      })];
+      const accessory = this.toAccessory(item);
+      return accessory ? [accessory] : [];
     });
 
     if (accessories.length === 0) {
@@ -88,6 +64,59 @@ export class MatterPublisher {
       this.log.info(`Submitted ${accessories.length} Matter accessories in one topology.`);
     }).catch((error) => {
       this.log.warn(`Matter accessory registration failed: ${error instanceof Error ? error.message : String(error)}`);
+    });
+  }
+
+  /**
+   * Unregisters equipment that is no longer published (e.g. excluded in the
+   * config). Runs only after the topology registration settles, so the two
+   * Homebridge events never overlap. Unknown UUIDs are a no-op in Homebridge.
+   */
+  async remove(equipment: EquipmentState[]): Promise<void> {
+    if (!this.api.matter || !this.registration) return;
+    await this.registration;
+    for (const item of equipment) this.states.delete(item.id);
+    // Homebridge reads the device type to decide which bridge an accessory is
+    // on, so pass the same composed description publish() would have used.
+    const accessories = equipment.flatMap((item) => {
+      const accessory = this.toAccessory(item);
+      return accessory ? [accessory] : [];
+    });
+    if (accessories.length === 0) return;
+    try {
+      await this.api.matter.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, accessories);
+      this.log.debug(`Removed excluded Matter accessories: ${equipment.map((item) => item.id).join(', ')}`);
+    } catch (error) {
+      this.log.warn(`Removing excluded Matter accessories failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  private toAccessory(item: EquipmentState): MatterAccessory | undefined {
+    const deviceType = this.deviceType(item);
+    if (!deviceType) return undefined;
+    // Always submit the fully-composed device type (with its Heating/Cooling
+    // feature requirements). Homebridge's own Matter cache only persists a
+    // bare {name, code} device-type stub - it cannot restore the composed
+    // shape - and its AccessoryManager already compares composed features to
+    // decide whether to reuse or rebuild the endpoint. Feeding it that stub
+    // here (instead of letting it compare against the real thing) silently
+    // drops the composed features on every restart, breaking thermostat
+    // commands, without preventing the endpoint rebuild it was meant to
+    // avoid. deviceType() below deliberately composes only the feature this
+    // plugin actually implements (no Occupancy: occupiedHeating/CoolingSetpoint
+    // are part of the base Heating/Cooling feature attributes, not gated
+    // behind Occupancy) so the restored-from-cache shape and the freshly
+    // composed shape always match and the endpoint is reused across restarts.
+    return associateMatterAccessory({
+      UUID: this.matterUuid(item.id),
+      displayName: item.name,
+      deviceType,
+      manufacturer: 'Jandy',
+      model: item.kind,
+      serialNumber: item.id,
+      context: { equipmentId: item.id },
+      clusters: this.clusters(item),
+      handlers: this.handlers(item),
     });
   }
 

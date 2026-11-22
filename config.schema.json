@@ -36,12 +36,51 @@
         "default": "Caribbean Blue",
         "enum": ["Alpine White", "Sky Blue", "Cobalt Blue", "Caribbean Blue", "Spring Green", "Emerald Green", "Emerald Rose", "Magenta", "Violet", "Slow Color Splash", "Fast Color Splash", "America The Beautiful", "Fat Tuesday", "Disco Tech"]
       },
+      "excludedDevices": {
+        "title": "Hide These Devices",
+        "description": "Checked devices are not published to HomeKit or Matter, and are removed if they were published before.",
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "string",
+          "oneOf": [
+            {"title": "Air Temperature", "enum": ["air-temperature"]},
+            {"title": "Pool Temperature", "enum": ["pool-temperature"]},
+            {"title": "Spa Temperature", "enum": ["spa-temperature"]},
+            {"title": "Pool Heater", "enum": ["pool-heater"]},
+            {"title": "Spa Heater", "enum": ["spa-heater"]},
+            {"title": "Heat Pump / Chiller", "enum": ["heat-pump"]},
+            {"title": "Filter Pump", "enum": ["filter-pump"]},
+            {"title": "Spa Mode", "enum": ["spa-mode"]},
+            {"title": "Air Blower", "enum": ["air-blower"]},
+            {"title": "Sheer Descent", "enum": ["sheer-descent"]},
+            {"title": "High Speed", "enum": ["high-speed"]},
+            {"title": "Pool Light", "enum": ["pool-light"]},
+            {"title": "Spa Light", "enum": ["spa-light"]},
+            {"title": "Salt Water Chlorinator", "enum": ["swg"]}
+          ]
+        }
+      },
+      "excludedDeviceNames": {
+        "title": "Other Devices to Hide",
+        "description": "Names or IDs of other devices to hide, such as an auxiliary circuit's iAquaLink label (for example, Jet Pump). The Homebridge log lists every discovered device's name and ID at startup.",
+        "type": "array",
+        "items": {"type": "string", "title": "Device name or ID"}
+      },
       "useMockApi": {"title": "Use Mock API (Development Only)", "type": "boolean", "default": false}
     }
   },
   "layout": [
     "name", "username", "password", "enableCloudControl", "pollIntervalSeconds",
     "exposeLightShows",
-    "poolLightProgram", "spaLightProgram", "diagnosticMode", "useMockApi"
+    "poolLightProgram", "spaLightProgram",
+    {
+      "type": "fieldset",
+      "title": "Hide Devices",
+      "description": "Keep equipment you don't have or don't use out of HomeKit and Matter.",
+      "expandable": true,
+      "items": ["excludedDevices", "excludedDeviceNames"]
+    },
+    "diagnosticMode", "useMockApi"
   ]
 }
