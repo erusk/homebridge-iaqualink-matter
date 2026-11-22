@@ -79,7 +79,18 @@
       "title": "Hide Devices",
       "description": "Keep equipment you don't have or don't use out of HomeKit and Matter.",
       "expandable": true,
-      "items": ["excludedDevices", "excludedDeviceNames"]
+      "items": [
+        {
+          "key": "excludedDevices",
+          "type": "checkboxes"
+        },
+        {
+          "key": "excludedDeviceNames",
+          "type": "array",
+          "buttonText": "Add device",
+          "items": [{"key": "excludedDeviceNames[]", "placeholder": "Device name or ID"}]
+        }
+      ]
     },
     "diagnosticMode", "useMockApi"
   ]
