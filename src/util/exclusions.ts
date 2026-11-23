@@ -5,7 +5,12 @@ type Device = Pick<EquipmentState, 'id' | 'name'>;
 
 export interface ExclusionMatcher {
   isExcluded(item: Device): boolean;
-  /** Configured entries that match none of the given devices, as typed. */
+  /**
+   * Typed `excludedDeviceNames` entries that match none of the given devices,
+   * as typed. Checklist entries are left out: checking equipment a system
+   * doesn't have is harmless, while a typed entry that matches nothing is
+   * likely a typo.
+   */
   unmatched(equipment: Device[]): string[];
 }
 
@@ -19,15 +24,16 @@ export interface ExclusionMatcher {
  * "Pool Heater") and can change between polls.
  */
 export function createExclusionMatcher(config: ExclusionConfig): ExclusionMatcher {
-  const entries = [...stringList(config.excludedDevices), ...stringList(config.excludedDeviceNames)]
+  const toEntries = (list: string[]) => list
     .map((entry) => ({ raw: entry.trim(), key: normalize(entry) }))
     .filter((entry) => entry.key);
-  const keys = new Set(entries.map((entry) => entry.key));
+  const typed = toEntries(stringList(config.excludedDeviceNames));
+  const keys = new Set([...toEntries(stringList(config.excludedDevices)), ...typed].map((entry) => entry.key));
   const matches = (key: string, item: Device) => key === normalize(item.id)
     || (item.id.startsWith('aux-') && key === normalize(item.name));
   return {
     isExcluded: (item) => [...keys].some((key) => matches(key, item)),
-    unmatched: (equipment) => [...new Map(entries.map((entry) => [entry.key, entry.raw])).entries()]
+    unmatched: (equipment) => [...new Map(typed.map((entry) => [entry.key, entry.raw])).entries()]
       .filter(([key]) => !equipment.some((item) => matches(key, item)))
       .map(([, raw]) => raw),
   };

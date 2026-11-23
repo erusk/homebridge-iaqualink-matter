@@ -81,7 +81,7 @@ The recommended configuration method is the Homebridge UI. A minimal manual conf
 
 iAquaLink can report equipment you don't have or don't use, such as a heater on a system without one. To keep it out of HomeKit and Matter, open **Hide Devices** in the plugin settings and check it, then restart. A hidden device is removed if it was published before, and anything that referenced it (scenes, automations, Matter pairings of that device) loses it.
 
-For devices not in the checklist, such as auxiliary circuits with custom labels, add the name as iAquaLink shows it (for example `Jet Pump`) or the device's ID under **Other Devices to Hide**. Matching ignores case. Names only match aux circuits: built-in equipment is matched by ID, because its names are not unique. At startup the log lists each discovered device with its ID, marking hidden ones `[excluded]`, and warns about any entry that matches no device:
+For devices not in the checklist, such as auxiliary circuits with custom labels, add the name as iAquaLink shows it (for example `Jet Pump`) or the device's ID under **Other Devices to Hide**. Matching ignores case. Names only match aux circuits: built-in equipment is matched by ID, because its names are not unique. At startup the log lists each discovered device with its ID, marking hidden ones `[excluded]`, and warns about any typed entry that matches no device. Checking equipment your system doesn't have is harmless:
 
 ```
 Discovered devices: Air Temperature (air-temperature), Pool Heater (pool-heater) [excluded], ...

@@ -33,16 +33,17 @@ describe('createExclusionMatcher', () => {
     expect(isExcluded({ id: 'heat-pump', name: 'Pool Heater' })).toBe(false);
   });
 
-  it('reports entries that match no device, as typed', () => {
+  it('reports typed entries that match no device, but not checklist entries', () => {
+    // Checking equipment the system doesn't have (spa-heater here) is harmless.
     const matcher = createExclusionMatcher({
-      excludedDevices: ['spa-heater'],
-      excludedDeviceNames: [' Pool Heater ', 'cleaner', 'Cleaner'],
+      excludedDevices: ['spa-heater', 'pool-heater'],
+      excludedDeviceNames: [' Pool Heater ', 'cleaner', 'Cleaner', 'Jett Pump'],
     });
     const devices = [
       { id: 'pool-heater', name: 'Pool Heater' },
       { id: 'aux-1', name: 'Cleaner' },
     ] as const;
-    expect(matcher.unmatched([...devices])).toEqual(['spa-heater', 'Pool Heater']);
+    expect(matcher.unmatched([...devices])).toEqual(['Pool Heater', 'Jett Pump']);
   });
 
   it('accepts a single string and ignores values that are not lists', () => {
