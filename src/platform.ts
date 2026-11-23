@@ -8,7 +8,7 @@ import { redact } from './diagnostics/redact.js';
 import { PLUGIN_NAME, PLATFORM_NAME } from './settings.js';
 import type { EquipmentId, EquipmentState, IAquaLinkConfig, SystemSnapshot } from './types.js';
 import { CommandQueue } from './util/command-queue.js';
-import { createExclusionMatcher } from './util/exclusions.js';
+import { createExclusionMatcher, type ExclusionMatcher } from './util/exclusions.js';
 
 export class IAquaLinkPlatform implements DynamicPlatformPlugin {
   readonly Service: typeof Service;
@@ -22,7 +22,7 @@ export class IAquaLinkPlatform implements DynamicPlatformPlugin {
   }>();
   private readonly provider: IAquaLinkProvider;
   private readonly matterPublisher: MatterPublisher;
-  private readonly isExcluded: (item: Pick<EquipmentState, 'id' | 'name'>) => boolean;
+  private readonly exclusions: ExclusionMatcher;
   private snapshot?: SystemSnapshot;
   private timer?: NodeJS.Timeout;
   private discovered = false;
@@ -31,7 +31,7 @@ export class IAquaLinkPlatform implements DynamicPlatformPlugin {
   constructor(readonly log: Logger, readonly config: IAquaLinkConfig, readonly api: API) {
     this.Service = api.hap.Service;
     this.Characteristic = api.hap.Characteristic;
-    this.isExcluded = createExclusionMatcher(config);
+    this.exclusions = createExclusionMatcher(config);
     this.provider = config.useMockApi
       ? new MockIAquaLinkProvider()
       : new CloudIAquaLinkProvider(log, config.username, config.password, {
@@ -187,13 +187,13 @@ export class IAquaLinkPlatform implements DynamicPlatformPlugin {
           return { ...currentItem, currentTemperatureC: spaTemperature };
         }
         return currentItem;
-      }).filter((item) => !this.isExcluded(item));
+      }).filter((item) => !this.exclusions.isExcluded(item));
       const snapshot = { ...receivedSnapshot, equipment };
       this.snapshot = snapshot;
       if (previous && !settling) this.logExternalChanges(previous.equipment, snapshot.equipment);
       if (this.config.diagnosticMode) this.log.debug(`Sanitized snapshot: ${JSON.stringify(redact(snapshot))}`);
       if (initial) {
-        this.discover(snapshot.equipment, receivedSnapshot.equipment.filter((item) => this.isExcluded(item)));
+        this.discover(snapshot.equipment, receivedSnapshot.equipment.filter((item) => this.exclusions.isExcluded(item)));
         this.discovered = true;
       }
       if (this.refreshFailing) this.log.info('iAquaLink is reachable again.');
@@ -276,6 +276,11 @@ export class IAquaLinkPlatform implements DynamicPlatformPlugin {
     this.log.info(`Discovered devices: ${[...equipment, ...excluded]
       .map((item) => `${item.name} (${item.id})${excluded.includes(item) ? ' [excluded]' : ''}`)
       .join(', ')}`);
+    const unmatched = this.exclusions.unmatched([...equipment, ...excluded]);
+    if (unmatched.length) {
+      this.log.warn(`Hide Devices: no device matches ${unmatched.map((entry) => `"${entry}"`).join(', ')}. `
+        + 'Use the checklist for built-in equipment, or an ID or aux circuit name from the Discovered devices line.');
+    }
     for (const [index, item] of equipment.entries()) {
       const uuid = this.api.hap.uuid.generate(`iaqualink:${item.id}`);
       let accessory = this.cachedAccessories.find((candidate) => candidate.UUID === uuid);
@@ -290,12 +295,8 @@ export class IAquaLinkPlatform implements DynamicPlatformPlugin {
     const valid = new Set(equipment.map((item) => this.api.hap.uuid.generate(`iaqualink:${item.id}`)));
     const stale = this.cachedAccessories.filter((accessory) => !valid.has(accessory.UUID));
     if (stale.length) this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, stale);
-    this.matterPublisher.publish(equipment);
+    this.matterPublisher.publish(equipment, excluded);
     void this.matterPublisher.update(equipment);
-    // Excluded devices may still be in Homebridge's Matter cache from before
-    // they were excluded; Homebridge keeps cached Matter accessories until the
-    // owning plugin unregisters them.
-    if (excluded.length) void this.matterPublisher.remove(excluded);
   }
 
   // The heat pump's chiller capability is only known for certain once a

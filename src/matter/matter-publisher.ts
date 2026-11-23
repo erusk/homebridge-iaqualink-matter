@@ -33,9 +33,10 @@ export class MatterPublisher {
     private readonly api: API,
     private readonly log: Logger,
     private readonly commands: MatterCommands,
+    private readonly removalTimeoutMs = 5_000,
   ) {}
 
-  publish(equipment: EquipmentState[]): void {
+  publish(equipment: EquipmentState[], excluded: EquipmentState[] = []): void {
     if (!this.api.isMatterEnabled() || !this.api.matter) {
       this.log.debug('Matter is not enabled for this bridge.');
       return;
@@ -47,20 +48,18 @@ export class MatterPublisher {
       return accessory ? [accessory] : [];
     });
 
-    if (accessories.length === 0) {
-      this.log.info('Registered 0 Matter accessories.');
-      this.registration = Promise.resolve();
-      return;
-    }
     // Homebridge's bridged Matter registration and unregistration methods emit
     // asynchronous events even though they return promises. Do not run legacy
     // cleanup during startup: its event can overlap this registration event and
-    // expose or mutate a partial topology. Submit exactly one complete topology.
-    this.registration = this.api.matter.registerPlatformAccessories(
-      PLUGIN_NAME,
-      PLATFORM_NAME,
-      accessories,
-    ).then(() => {
+    // expose or mutate a partial topology. Submit exactly one complete topology,
+    // only once removing any hidden devices has finished.
+    const matter = this.api.matter;
+    this.registration = this.removeHidden(excluded).then(async () => {
+      if (accessories.length === 0) {
+        this.log.info('Registered 0 Matter accessories.');
+        return;
+      }
+      await matter.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, accessories);
       this.log.info(`Submitted ${accessories.length} Matter accessories in one topology.`);
     }).catch((error) => {
       this.log.warn(`Matter accessory registration failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -68,26 +67,44 @@ export class MatterPublisher {
   }
 
   /**
-   * Unregisters equipment that is no longer published (e.g. excluded in the
-   * config). Runs only after the topology registration settles, so the two
-   * Homebridge events never overlap. Unknown UUIDs are a no-op in Homebridge.
+   * Unregisters hidden devices that Homebridge restored from its Matter cache
+   * (it keeps them until the owning plugin removes them), then waits until
+   * Homebridge has actually closed them. Homebridge handles the unregister
+   * event after the call resolves, so without the wait it could still be
+   * running when the new topology is registered. Devices that are not present
+   * are skipped, so a normal restart makes no unregister call at all.
    */
-  async remove(equipment: EquipmentState[]): Promise<void> {
-    if (!this.api.matter || !this.registration) return;
-    await this.registration;
-    for (const item of equipment) this.states.delete(item.id);
-    // Homebridge reads the device type to decide which bridge an accessory is
-    // on, so pass the same composed description publish() would have used.
-    const accessories = equipment.flatMap((item) => {
+  private async removeHidden(excluded: EquipmentState[]): Promise<void> {
+    const present: EquipmentState[] = [];
+    for (const item of excluded) {
+      if (await this.isPresent(item.id)) present.push(item);
+    }
+    const accessories = present.flatMap((item) => {
       const accessory = this.toAccessory(item);
       return accessory ? [accessory] : [];
     });
-    if (accessories.length === 0) return;
+    if (!this.api.matter || accessories.length === 0) return;
     try {
       await this.api.matter.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, accessories);
-      this.log.debug(`Removed excluded Matter accessories: ${equipment.map((item) => item.id).join(', ')}`);
     } catch (error) {
-      this.log.warn(`Removing excluded Matter accessories failed: ${error instanceof Error ? error.message : String(error)}`);
+      this.log.warn(`Removing hidden Matter accessories failed: ${error instanceof Error ? error.message : String(error)}`);
+      return;
+    }
+    const deadline = Date.now() + this.removalTimeoutMs;
+    while (Date.now() < deadline) {
+      const remaining = await Promise.all(present.map((item) => this.isPresent(item.id)));
+      if (!remaining.includes(true)) break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    this.log.info(`Removed hidden Matter accessories: ${present.map((item) => item.name).join(', ')}`);
+  }
+
+  private async isPresent(id: EquipmentState['id']): Promise<boolean> {
+    try {
+      const state = await this.api.matter?.getAccessoryState(this.matterUuid(id), 'bridgedDeviceBasicInformation');
+      return state !== undefined;
+    } catch {
+      return false;
     }
   }
 

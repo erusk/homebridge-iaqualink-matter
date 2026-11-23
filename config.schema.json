@@ -49,7 +49,7 @@
             {"title": "Spa Temperature", "enum": ["spa-temperature"]},
             {"title": "Pool Heater", "enum": ["pool-heater"]},
             {"title": "Spa Heater", "enum": ["spa-heater"]},
-            {"title": "Heat Pump / Chiller", "enum": ["heat-pump"]},
+            {"title": "Heat Pump / Chiller (shown as Pool Heater on heat-only heat pumps)", "enum": ["heat-pump"]},
             {"title": "Filter Pump", "enum": ["filter-pump"]},
             {"title": "Spa Mode", "enum": ["spa-mode"]},
             {"title": "Air Blower", "enum": ["air-blower"]},
@@ -63,7 +63,7 @@
       },
       "excludedDeviceNames": {
         "title": "Other Devices to Hide",
-        "description": "Names or IDs of other devices to hide, such as an auxiliary circuit's iAquaLink label (for example, Jet Pump). The Homebridge log lists every discovered device's name and ID at startup.",
+        "description": "Aux circuit names as iAquaLink shows them (for example, Jet Pump), or any device ID. Use the checklist above for built-in equipment. The Homebridge log lists every discovered device's name and ID at startup.",
         "type": "array",
         "items": {"type": "string", "title": "Device name or ID"}
       },

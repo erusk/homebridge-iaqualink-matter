@@ -73,7 +73,7 @@ The recommended configuration method is the Homebridge UI. A minimal manual conf
 | `poolLightProgram` | `Caribbean Blue` | Program selected when the Matter pool light is turned on.  Matter does not currently support multiple switches under one device, so you must sellect a default light color if you are using Matter to turn the light on and off. |
 | `spaLightProgram` | `Caribbean Blue` | Program selected when the Matter spa light is turned on. Matter does not currently support multiple switches under one device, so you must sellect a default light color if you are using Matter to turn the light on and off. |
 | `excludedDevices` | `[]` | Equipment IDs not to publish to HomeKit or Matter, chosen under **Hide Devices** in Homebridge UI. See [Hiding devices](#hiding-devices). |
-| `excludedDeviceNames` | `[]` | Other device names or IDs to hide, such as an aux circuit's iAquaLink label. |
+| `excludedDeviceNames` | `[]` | Aux circuit names (their iAquaLink label) or any device IDs to hide. |
 | `diagnosticMode` | `false` | Log sanitized equipment snapshots for troubleshooting. |
 | `useMockApi` | `false` | Use synthetic equipment during development; never enable for normal operation. |
 
@@ -81,13 +81,13 @@ The recommended configuration method is the Homebridge UI. A minimal manual conf
 
 iAquaLink can report equipment you don't have or don't use, such as a heater on a system without one. To keep it out of HomeKit and Matter, open **Hide Devices** in the plugin settings and check it, then restart. A hidden device is removed if it was published before, and anything that referenced it (scenes, automations, Matter pairings of that device) loses it.
 
-For devices not in the checklist, such as auxiliary circuits with custom labels, add the name as iAquaLink shows it (for example `Jet Pump`) under **Other Devices to Hide**. Matching ignores case. At startup the log lists each discovered device with its ID, marking hidden ones `[excluded]`:
+For devices not in the checklist, such as auxiliary circuits with custom labels, add the name as iAquaLink shows it (for example `Jet Pump`) or the device's ID under **Other Devices to Hide**. Matching ignores case. Names only match aux circuits: built-in equipment is matched by ID, because its names are not unique. At startup the log lists each discovered device with its ID, marking hidden ones `[excluded]`, and warns about any entry that matches no device:
 
 ```
 Discovered devices: Air Temperature (air-temperature), Pool Heater (pool-heater) [excluded], ...
 ```
 
-On systems with a heat pump but no chiller, the heat pump is reported as **Pool Heater** with the ID `heat-pump`. Check **Heat Pump / Chiller** or add `Pool Heater` by name to hide it.
+On systems with a heat pump but no chiller, the heat pump is reported as **Pool Heater** with the ID `heat-pump`. To hide it, check **Heat Pump / Chiller**, not **Pool Heater**.
 
 Hiding a temperature sensor does not affect the thermostats that read it.
 
