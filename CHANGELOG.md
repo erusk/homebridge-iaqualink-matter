@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Hide equipment you don't have or don't use. Pick devices under **Hide Devices** in the plugin settings (`excludedDevices`), or list other device names or IDs, such as an aux circuit's iAquaLink label (`excludedDeviceNames`). Hidden devices are not published to HomeKit or Matter, and are removed from both if they were published before. Names match aux circuits only; built-in equipment is matched by ID. The log lists every discovered device with its ID at startup, and warns about typed entries that match no device.
 
+### Fixed
+
+- Remove the light color and show switches from HomeKit when **Expose Light Colors and Shows as Switches** is turned off. They were left behind on the light until its accessory was removed, as was any program no longer in the list.
+
 ### Changed
 
 - Declare support for Node.js 26, which Homebridge 2.5 runs on, so Homebridge no longer warns that the plugin requires Node.js 22 or 24.

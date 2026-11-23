@@ -117,7 +117,9 @@ export class HapEquipmentAccessory {
       this.service.removeCharacteristic(this.service.getCharacteristic(C.Hue));
       this.service.removeCharacteristic(this.service.getCharacteristic(C.Saturation));
       this.service.removeCharacteristic(this.service.getCharacteristic(C.Brightness));
-      if (this.platform.config.exposeLightShows !== false) this.configureLightPrograms(state);
+      const exposePrograms = this.platform.config.exposeLightShows !== false;
+      this.removeUnusedProgramSwitches(exposePrograms ? state.lightPrograms ?? [] : []);
+      if (exposePrograms) this.configureLightPrograms(state);
       return;
     }
     this.configureThermostat(state);
@@ -209,6 +211,19 @@ export class HapEquipmentAccessory {
             service.updateCharacteristic(C.On, false);
           }, PROGRAM_RESET_MS);
         });
+    }
+  }
+
+  // Program switches are cached with the accessory, so turning the option off
+  // (or a program disappearing from the list) would otherwise leave them in
+  // HomeKit for good.
+  private removeUnusedProgramSwitches(programs: string[]): void {
+    const S = this.platform.Service;
+    const wanted = new Set(programs.map((program) => `program:${program}`));
+    for (const service of [...this.accessory.services]) {
+      if (service.UUID === S.Switch.UUID && service.subtype?.startsWith('program:') && !wanted.has(service.subtype)) {
+        this.accessory.removeService(service);
+      }
     }
   }
 
